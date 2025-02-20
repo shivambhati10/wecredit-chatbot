@@ -1,3 +1,21 @@
+# First, install required packages
+import subprocess
+import sys
+
+def install_packages():
+    print("Checking and installing required packages...")
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "openai"])
+        print("OpenAI package successfully installed.")
+    except Exception as e:
+        print(f"Error installing packages: {str(e)}")
+        print("Please run 'pip install openai' manually before running this script.")
+        sys.exit(1)
+
+# Run the installation
+install_packages()
+
+# Now continue with the chatbot implementation
 import openai
 import re
 import json
