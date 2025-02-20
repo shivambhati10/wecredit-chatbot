@@ -1,6 +1,6 @@
-
 import streamlit as st
-from typing import Dict, List, Optional
+import time
+from typing import Dict, List
 
 class FintechChatbot:
     
@@ -18,7 +18,7 @@ class FintechChatbot:
                 "factors": ["Payment History", "Credit Utilization", "Credit Age", "Credit Mix"]
             },
             "interest_rate": {
-                "definition": "The percentage of principal charged by lender for loan use",
+                "definition": "The percentage of principal charged by the lender for loan use",
                 "types": ["Fixed Rate", "Floating Rate", "Base Rate", "MCLR"],
                 "factors": ["RBI Policy", "Credit Score", "Market Conditions", "Loan Type"]
             }
@@ -66,7 +66,7 @@ class FintechChatbot:
                     f"Score range: {info['range']}\n" + \
                     f"Key factors affecting credit score:\n" + \
                     "\n".join(f"- {factor}" for factor in info["factors"])
-                response["suggestions"] = ["How to improve credit score", "Apply for loan"]
+                response["suggestions"] = ["How to improve credit score", "Apply for a loan"]
 
             elif intent == "interest_rates":
                 info = self.knowledge_base["interest_rate"]
@@ -94,53 +94,85 @@ def main():
     st.set_page_config(
         page_title="FinTech Chatbot",
         page_icon="💰",
-        layout="centered"
+        layout="wide"
     )
 
-    st.title("FinTech Chatbot 💰")
+    # Sidebar with chatbot details
+    with st.sidebar:
+        st.title("ℹ️ Chatbot Info")
+        st.write("This chatbot helps you with financial queries related to loans, credit scores, and interest rates.")
+        st.write("💡 **Example Questions:**")
+        st.write("- What is a credit score?")
+        st.write("- What types of loans are available?")
+        st.write("- How do interest rates work?")
+        st.markdown("---")
+        st.write("🚀 **Developed with Streamlit**")
+        dark_mode = st.checkbox("🌙 Dark Mode")
+
+    # Apply dark mode if selected
+    if dark_mode:
+        st.markdown(
+            """
+            <style>
+            body {
+                background-color: #0e1117;
+                color: white;
+            }
+            .stTextInput, .stTextArea, .stButton>button {
+                background-color: #22272e;
+                color: white;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.title("💰 FinTech Chatbot")
     st.write("Ask me about loans, credit scores, and interest rates!")
 
     if 'chatbot' not in st.session_state:
         st.session_state.chatbot = FintechChatbot()
     
-
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
 
     user_input = st.chat_input("Type your question here...")
-    
-    if user_input:
 
+    if user_input:
         with st.chat_message("user"):
             st.write(user_input)
         
-      
         response = st.session_state.chatbot.get_response(user_input)
+
         with st.chat_message("assistant"):
-            st.write(response["text"])
+            with st.spinner("Thinking..."):
+                time.sleep(1)  # Simulate typing delay
+                st.write(response["text"])
 
         st.session_state.chat_history.extend([
             {"role": "user", "content": user_input},
             {"role": "assistant", "content": response["text"]}
         ])
 
+        # Show suggestions as buttons
         if response["suggestions"]:
-            with st.container():
-                st.write("Suggested questions:")
-                cols = st.columns(len(response["suggestions"]))
-                for idx, suggestion in enumerate(response["suggestions"]):
-                    if cols[idx].button(suggestion, key=f"suggest_{idx}"):
-
-                        with st.chat_message("user"):
-                            st.write(suggestion)
-                        suggest_response = st.session_state.chatbot.get_response(suggestion)
-                        with st.chat_message("assistant"):
+            st.write("💡 Suggested Questions:")
+            cols = st.columns(len(response["suggestions"]))
+            for idx, suggestion in enumerate(response["suggestions"]):
+                if cols[idx].button(suggestion, key=f"suggest_{idx}"):
+                    with st.chat_message("user"):
+                        st.write(suggestion)
+                    suggest_response = st.session_state.chatbot.get_response(suggestion)
+                    with st.chat_message("assistant"):
+                        with st.spinner("Thinking..."):
+                            time.sleep(1)
                             st.write(suggest_response["text"])
-                        st.session_state.chat_history.extend([
-                            {"role": "user", "content": suggestion},
-                            {"role": "assistant", "content": suggest_response["text"]}
-                        ])
+                    st.session_state.chat_history.extend([
+                        {"role": "user", "content": suggestion},
+                        {"role": "assistant", "content": suggest_response["text"]}
+                    ])
     
+    # Display chat history
     for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):
             st.write(message["content"])
