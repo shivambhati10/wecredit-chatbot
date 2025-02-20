@@ -97,7 +97,6 @@ def main():
         layout="wide"
     )
 
-    # Sidebar with chatbot details
     with st.sidebar:
         st.title("ℹ️ Chatbot Info")
         st.write("This chatbot helps you with financial queries related to loans, credit scores, and interest rates.")
@@ -105,27 +104,26 @@ def main():
         st.write("- What is a credit score?")
         st.write("- What types of loans are available?")
         st.write("- How do interest rates work?")
-        st.markdown("---")
-        st.write("🚀 **Developed with Streamlit**")
         dark_mode = st.checkbox("🌙 Dark Mode")
 
-    # Apply dark mode if selected
-    if dark_mode:
-        st.markdown(
-            """
-            <style>
-            body {
-                background-color: #0e1117;
-                color: white;
-            }
-            .stTextInput, .stTextArea, .stButton>button {
-                background-color: #22272e;
-                color: white;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
+    background_color = "#F8F9FA" if not dark_mode else "#121212"
+    text_color = "#000000" if not dark_mode else "#FFFFFF"
+
+    st.markdown(
+        f"""
+        <style>
+        body {{
+            background-color: {background_color};
+            color: {text_color};
+        }}
+        .stTextInput, .stTextArea, .stButton>button {{
+            background-color: #FFFFFF;
+            color: #000000;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.title("💰 FinTech Chatbot")
     st.write("Ask me about loans, credit scores, and interest rates!")
@@ -146,7 +144,7 @@ def main():
 
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                time.sleep(1)  # Simulate typing delay
+                time.sleep(1)
                 st.write(response["text"])
 
         st.session_state.chat_history.extend([
@@ -154,7 +152,6 @@ def main():
             {"role": "assistant", "content": response["text"]}
         ])
 
-        # Show suggestions as buttons
         if response["suggestions"]:
             st.write("💡 Suggested Questions:")
             cols = st.columns(len(response["suggestions"]))
@@ -172,10 +169,10 @@ def main():
                         {"role": "assistant", "content": suggest_response["text"]}
                     ])
     
-    # Display chat history
     for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):
             st.write(message["content"])
 
 if __name__ == "__main__":
     main()
+
