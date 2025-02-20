@@ -7,12 +7,12 @@ from datetime import datetime
 # Configuration
 class Config:
     def __init__(self):
-        self.model = "gpt-3.5-turbo"  
+        self.model = "gpt-3.5-turbo"  # Can be replaced with any LLM API
         self.api_key = os.environ.get("OPENAI_API_KEY", "your-api-key-here")
         self.max_tokens = 150
         self.temperature = 0.7
 
-
+# Knowledge Base
 class KnowledgeBase:
     def __init__(self):
         self.financial_concepts = {
@@ -80,7 +80,7 @@ class KnowledgeBase:
             "improve credit score": "You can improve your credit score by paying bills on time, reducing debt, avoiding multiple loan applications, maintaining old credit accounts, and regularly checking your credit report for errors."
         }
 
-
+# Chat Handler
 class ChatBot:
     def __init__(self):
         self.config = Config()
@@ -88,14 +88,14 @@ class ChatBot:
         openai.api_key = self.config.api_key
         
     def preprocess_query(self, query):
-       
+        # Convert to lowercase and remove extra whitespaces
         query = query.lower().strip()
-     
+        # Remove special characters except basic punctuation
         query = re.sub(r'[^\w\s.,?]', '', query)
         return query
         
     def search_knowledge_base(self, query):
-       
+        # Check if query directly matches any key in our knowledge base
         for concept, info in self.knowledge.financial_concepts.items():
             if concept in query:
                 return {
@@ -104,7 +104,7 @@ class ChatBot:
                     "info": info
                 }
         
-      
+        # Check if query is about WeCredit services
         for service, details in self.knowledge.wecredit_services.items():
             if service in query:
                 return {
@@ -113,7 +113,7 @@ class ChatBot:
                     "details": details
                 }
         
-     
+        # Check FAQs
         for question, answer in self.knowledge.faqs.items():
             if self.is_similar(query, question):
                 return {
@@ -125,11 +125,12 @@ class ChatBot:
         return None
     
     def is_similar(self, query, question):
-   
+        # Simple similarity check - can be enhanced with NLP techniques
         query_words = set(query.split())
         question_words = set(question.split())
         common_words = query_words.intersection(question_words)
-    
+        
+        # If more than 30% words match, consider it similar
         similarity = len(common_words) / len(question_words) if question_words else 0
         return similarity > 0.3
     
@@ -190,15 +191,16 @@ class ChatBot:
     
     def get_response(self, user_input):
         query = self.preprocess_query(user_input)
-       
+        
+        # First, check our structured knowledge base
         knowledge_item = self.search_knowledge_base(query)
         structured_response = self.format_response(knowledge_item) if knowledge_item else None
         
-
+        # If we have a structured response, return it
         if structured_response:
             return structured_response
         
-      
+        # Otherwise, use the LLM for handling the query
         return self.generate_llm_response(query)
 
     def log_conversation(self, user_input, response):
@@ -212,7 +214,7 @@ class ChatBot:
         with open("conversation_logs.jsonl", "a") as f:
             f.write(json.dumps(log_entry) + "\n")
 
-
+# Interactive Chat Interface
 def main():
     chatbot = ChatBot()
     print("WeCredit Financial Assistant")
