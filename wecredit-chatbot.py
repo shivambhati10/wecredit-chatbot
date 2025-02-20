@@ -1,252 +1,149 @@
-# First, install required packages
-import subprocess
-import sys
 
-def install_packages():
-    print("Checking and installing required packages...")
-    try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "openai"])
-        print("OpenAI package successfully installed.")
-    except Exception as e:
-        print(f"Error installing packages: {str(e)}")
-        print("Please run 'pip install openai' manually before running this script.")
-        sys.exit(1)
+import streamlit as st
+from typing import Dict, List, Optional
 
-# Run the installation
-install_packages()
-
-# Now continue with the chatbot implementation
-import openai
-import re
-import json
-import os
-from datetime import datetime
-
-# Configuration
-class Config:
+class FintechChatbot:
+    
     def __init__(self):
-        self.model = "gpt-3.5-turbo"  # Can be replaced with any LLM API
-        self.api_key = os.environ.get("OPENAI_API_KEY", "your-api-key-here")
-        self.max_tokens = 150
-        self.temperature = 0.7
-
-# Knowledge Base
-class KnowledgeBase:
-    def __init__(self):
-        self.financial_concepts = {
+        self.knowledge_base = {
             "loan": {
                 "definition": "A sum of money borrowed that is expected to be paid back with interest",
-                "types": ["Personal Loan", "Home Loan", "Auto Loan", "Education Loan", "Business Loan"],
-                "documentation": ["ID Proof", "Address Proof", "Income Proof", "Bank Statements"]
+                "types": ["Personal Loan", "Home Loan", "Business Loan", "Education Loan"],
+                "key_terms": ["EMI", "Interest Rate", "Tenure", "Principal Amount"]
             },
-            "interest rate": {
-                "definition": "The amount charged by a lender to a borrower for the use of assets",
-                "types": ["Fixed Rate", "Floating Rate", "Flat Rate"],
-                "calculation": "Interest = Principal × Rate × Time"
+            "credit_score": {
+                "definition": "A numerical expression of creditworthiness based on credit history",
+                "range": "300-900",
+                "providers": ["CIBIL", "Experian", "Equifax"],
+                "factors": ["Payment History", "Credit Utilization", "Credit Age", "Credit Mix"]
             },
-            "credit score": {
-                "definition": "A numerical expression based on a statistical analysis of a person's credit files",
-                "range": "300-900 in India (CIBIL Score)",
-                "factors": ["Payment History", "Credit Utilization", "Length of Credit History", "Types of Credit"]
-            },
-            "cibil": {
-                "definition": "TransUnion CIBIL is India's first credit information company",
-                "score_range": "300-900",
-                "importance": "Higher scores indicate better creditworthiness",
-                "report_access": "You can check your CIBIL score once a year for free"
-            },
-            "credit report": {
-                "definition": "A detailed breakdown of an individual's credit history",
-                "contents": ["Personal Information", "Account History", "Credit Inquiries", "Public Records"],
-                "importance": "Used by lenders to assess credit risk"
-            },
-            "emi": {
-                "definition": "Equated Monthly Installment - fixed payment amount made by a borrower to a lender",
-                "calculation": "EMI = [P × R × (1+R)^N]/[(1+R)^N-1], where P=Principal, R=Rate of interest, N=Tenure"
+            "interest_rate": {
+                "definition": "The percentage of principal charged by lender for loan use",
+                "types": ["Fixed Rate", "Floating Rate", "Base Rate", "MCLR"],
+                "factors": ["RBI Policy", "Credit Score", "Market Conditions", "Loan Type"]
             }
-        }
-        
-        self.wecredit_services = {
-            "personal loan": {
-                "interest_rate": "10.99% - 18.99%",
-                "processing_fee": "1-2% of loan amount",
-                "tenure": "12 - 60 months",
-                "loan_amount": "₹50,000 - ₹10,00,000"
-            },
-            "home loan": {
-                "interest_rate": "6.90% - 8.50%",
-                "processing_fee": "0.5-1% of loan amount",
-                "tenure": "5 - 30 years",
-                "loan_amount": "Up to ₹5 crore"
-            },
-            "credit report": {
-                "fee": "Free first report, ₹399 for additional reports",
-                "delivery": "Digital delivery within 24 hours",
-                "analysis": "Detailed analysis and improvement tips included"
-            },
-            "credit improvement": {
-                "duration": "3-6 months program",
-                "features": ["Personalized Plan", "Monthly Monitoring", "Expert Consultation"],
-                "success_rate": "85% customers see improvement of 50+ points"
-            }
-        }
-        
-        self.faqs = {
-            "how to apply for loan": "You can apply for a loan through our website or mobile app. Navigate to the 'Loans' section, select the type of loan, fill in your details, and submit required documents.",
-            "how to check credit score": "You can check your credit score for free once a year through our 'Credit Health' section on the WeCredit app or website. We provide CIBIL scores along with a detailed analysis.",
-            "loan rejection reasons": "Loan applications may be rejected due to low credit score, high existing debt, insufficient income, employment instability, or incomplete documentation.",
-            "improve credit score": "You can improve your credit score by paying bills on time, reducing debt, avoiding multiple loan applications, maintaining old credit accounts, and regularly checking your credit report for errors."
         }
 
-# Chat Handler
-class ChatBot:
-    def __init__(self):
-        self.config = Config()
-        self.knowledge = KnowledgeBase()
-        openai.api_key = self.config.api_key
+        self.query_patterns = {
+            "loan_types": ["what types of loans", "loan options", "different loans"],
+            "credit_score_info": ["what is credit score", "cibil score", "credit rating"],
+            "interest_rates": ["interest rates", "rate of interest", "how much interest"]
+        }
+
+    def preprocess_query(self, query: str) -> str:
+        return query.lower().strip()
+
+    def identify_intent(self, query: str) -> str:
+        query = self.preprocess_query(query)
         
-    def preprocess_query(self, query):
-        # Convert to lowercase and remove extra whitespaces
-        query = query.lower().strip()
-        # Remove special characters except basic punctuation
-        query = re.sub(r'[^\w\s.,?]', '', query)
-        return query
-        
-    def search_knowledge_base(self, query):
-        # Check if query directly matches any key in our knowledge base
-        for concept, info in self.knowledge.financial_concepts.items():
-            if concept in query:
-                return {
-                    "type": "financial_concept",
-                    "concept": concept,
-                    "info": info
-                }
-        
-        # Check if query is about WeCredit services
-        for service, details in self.knowledge.wecredit_services.items():
-            if service in query:
-                return {
-                    "type": "service",
-                    "service": service,
-                    "details": details
-                }
-        
-        # Check FAQs
-        for question, answer in self.knowledge.faqs.items():
-            if self.is_similar(query, question):
-                return {
-                    "type": "faq",
-                    "question": question,
-                    "answer": answer
-                }
-        
-        return None
-    
-    def is_similar(self, query, question):
-        # Simple similarity check - can be enhanced with NLP techniques
-        query_words = set(query.split())
-        question_words = set(question.split())
-        common_words = query_words.intersection(question_words)
-        
-        # If more than 30% words match, consider it similar
-        similarity = len(common_words) / len(question_words) if question_words else 0
-        return similarity > 0.3
-    
-    def format_response(self, knowledge_item):
-        if not knowledge_item:
-            return None
-            
-        if knowledge_item["type"] == "financial_concept":
-            concept = knowledge_item["concept"]
-            info = knowledge_item["info"]
-            response = f"{concept.title()}: {info['definition']}"
-            
-            if "types" in info:
-                response += f"\n\nTypes: {', '.join(info['types'])}"
+        for intent, patterns in self.query_patterns.items():
+            if any(pattern in query for pattern in patterns):
+                return intent
                 
-            if "calculation" in info:
-                response += f"\n\nCalculation: {info['calculation']}"
+        for topic in self.knowledge_base.keys():
+            if topic.replace("_", " ") in query:
+                return topic
                 
-            return response
-            
-        elif knowledge_item["type"] == "service":
-            service = knowledge_item["service"]
-            details = knowledge_item["details"]
-            response = f"WeCredit {service.title()} Details:\n"
-            
-            for key, value in details.items():
-                formatted_key = key.replace("_", " ").title()
-                response += f"\n{formatted_key}: {value}"
-                
-            return response
-            
-        elif knowledge_item["type"] == "faq":
-            return knowledge_item["answer"]
-            
-        return None
-    
-    def generate_llm_response(self, query, context=None):
-        prompt = f"""You are WeCredit's financial assistant chatbot. Answer the following query related to financial services. 
-        Be concise, helpful, and accurate.
-        
-        Query: {query}
-        """
-        
-        if context:
-            prompt += f"\n\nRelevant information: {context}"
-        
+        return "unknown"
+
+    def get_response(self, query: str) -> Dict:
+        intent = self.identify_intent(query)
+        response = {
+            "text": "",
+            "suggestions": [],
+            "error": None
+        }
+
         try:
-            response = openai.ChatCompletion.create(
-                model=self.config.model,
-                messages=[{"role": "system", "content": prompt}],
-                max_tokens=self.config.max_tokens,
-                temperature=self.config.temperature
-            )
-            return response.choices[0].message.content.strip()
+            if intent == "loan_types":
+                response["text"] = "We offer several types of loans:\n" + \
+                    "\n".join(f"- {loan}" for loan in self.knowledge_base["loan"]["types"])
+                response["suggestions"] = ["Tell me about interest rates", "How to check credit score"]
+
+            elif intent == "credit_score_info":
+                info = self.knowledge_base["credit_score"]
+                response["text"] = f"Credit score is {info['definition']}.\n" + \
+                    f"Score range: {info['range']}\n" + \
+                    f"Key factors affecting credit score:\n" + \
+                    "\n".join(f"- {factor}" for factor in info["factors"])
+                response["suggestions"] = ["How to improve credit score", "Apply for loan"]
+
+            elif intent == "interest_rates":
+                info = self.knowledge_base["interest_rate"]
+                response["text"] = f"Interest rate is {info['definition']}.\n" + \
+                    f"Types of interest rates:\n" + \
+                    "\n".join(f"- {rate_type}" for rate_type in info["types"])
+                response["suggestions"] = ["Calculate EMI", "Compare loan options"]
+
+            elif intent in self.knowledge_base:
+                info = self.knowledge_base[intent]
+                response["text"] = f"{intent.replace('_', ' ').title()}: {info['definition']}"
+                response["suggestions"] = ["Learn more", "Talk to an advisor"]
+
+            else:
+                response["text"] = "I'm not sure about that. Would you like to know about loans, credit scores, or interest rates?"
+                response["suggestions"] = ["Loan Types", "Credit Score", "Interest Rates"]
+
         except Exception as e:
-            print(f"Error in LLM API call: {e}")
-            return "I'm having trouble connecting to my knowledge base. Please try again later or contact customer support."
-    
-    def get_response(self, user_input):
-        query = self.preprocess_query(user_input)
-        
-        # First, check our structured knowledge base
-        knowledge_item = self.search_knowledge_base(query)
-        structured_response = self.format_response(knowledge_item) if knowledge_item else None
-        
-        # If we have a structured response, return it
-        if structured_response:
-            return structured_response
-        
-        # Otherwise, use the LLM for handling the query
-        return self.generate_llm_response(query)
+            response["error"] = str(e)
+            response["text"] = "I encountered an error processing your request. Please try again."
 
-    def log_conversation(self, user_input, response):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = {
-            "timestamp": timestamp,
-            "user_input": user_input,
-            "response": response
-        }
-        
-        with open("conversation_logs.jsonl", "a") as f:
-            f.write(json.dumps(log_entry) + "\n")
+        return response
 
-# Interactive Chat Interface
 def main():
-    chatbot = ChatBot()
-    print("WeCredit Financial Assistant")
-    print("Type 'exit' to end the conversation\n")
+    st.set_page_config(
+        page_title="FinTech Chatbot",
+        page_icon="💰",
+        layout="centered"
+    )
+
+    st.title("FinTech Chatbot 💰")
+    st.write("Ask me about loans, credit scores, and interest rates!")
+
+    if 'chatbot' not in st.session_state:
+        st.session_state.chatbot = FintechChatbot()
     
-    while True:
-        user_input = input("You: ")
-        if user_input.lower() in ["exit", "quit", "bye"]:
-            print("Thank you for using WeCredit Financial Assistant. Have a great day!")
-            break
-            
-        response = chatbot.get_response(user_input)
-        print(f"\nWeCredit Assistant: {response}\n")
-        chatbot.log_conversation(user_input, response)
+
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
+
+    user_input = st.chat_input("Type your question here...")
+    
+    if user_input:
+
+        with st.chat_message("user"):
+            st.write(user_input)
+        
+      
+        response = st.session_state.chatbot.get_response(user_input)
+        with st.chat_message("assistant"):
+            st.write(response["text"])
+
+        st.session_state.chat_history.extend([
+            {"role": "user", "content": user_input},
+            {"role": "assistant", "content": response["text"]}
+        ])
+
+        if response["suggestions"]:
+            with st.container():
+                st.write("Suggested questions:")
+                cols = st.columns(len(response["suggestions"]))
+                for idx, suggestion in enumerate(response["suggestions"]):
+                    if cols[idx].button(suggestion, key=f"suggest_{idx}"):
+
+                        with st.chat_message("user"):
+                            st.write(suggestion)
+                        suggest_response = st.session_state.chatbot.get_response(suggestion)
+                        with st.chat_message("assistant"):
+                            st.write(suggest_response["text"])
+                        st.session_state.chat_history.extend([
+                            {"role": "user", "content": suggestion},
+                            {"role": "assistant", "content": suggest_response["text"]}
+                        ])
+    
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
 
 if __name__ == "__main__":
     main()
