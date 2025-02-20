@@ -125,7 +125,7 @@ def main():
         unsafe_allow_html=True,
     )
 
-    st.title("💰 FinTech Chatbot")
+    st.title("🏦 FinTech Chatbot")
     st.write("Ask me about loans, credit scores, and interest rates!")
 
     if 'chatbot' not in st.session_state:
